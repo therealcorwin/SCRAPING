@@ -16,7 +16,7 @@ find_all ==> ResultSet
     Methode find_* etc indisponible, equivalent a peu pres à une liste python
 '''
 # Récupération catégorie
-#
+
 # Methode 1
 print("\nRecupération Catégorie Methode 1\n")
 aside = soup.find("div", class_="side_categories")
@@ -104,3 +104,30 @@ titres = soup.find("ol", class_="row").find_all(
     "article", class_="product_pod")
 for titre in titres:
     print(titre.h3.a.get("title"))
+
+# Methode 2 Docstrings
+
+articles = soup.find_all("article", class_="product_pod")
+
+'''
+Données récupérées :
+
+[<a href="catalogue/our-band-could-be-your-life-scenes-from-the-american-indie-underground-1981-1991_985/index.html">
+<img alt="Our Band Could Be Your Life: Scenes from the American Indie Underground, 1981-1991" class="thumbnail" 
+src="media/cache/54/60/54607fe8945897cdcced0044103b10b6.jpg"/></a>, 
+<a href="catalogue/our-band-could-be-your-life-scenes-from-the-american-indie-underground-1981-1991_985/index.html" 
+title="Our Band Could Be Your Life: Scenes from the American Indie Underground, 1981-1991">Our Band Could Be ...</a>]
+
+'''
+# Recupere toutes les balises articles avec la classe product_pod
+for a in articles:
+    # Recupere toutes les balises a
+    titres = a.find_all("a")
+# Teste s'il y a au moins 2 items dans les resultats obtenus
+    if len(titres) >= 2:
+        # Récupère le second item de la liste. Possible de faire avec titres[-1] pour prendre le dernier item.
+        # Seulement s'il n'y a que deux elemens car le titre se trouve dans le scd item
+        titre = titres[1]
+# Recupere le contenu de la balise title.
+# Titre["title"] utilisable mais si la cle n'existe pas ==> Erreur.  Donc on utilse get() pour eviter une erreur.
+        print(titre.get("title"))

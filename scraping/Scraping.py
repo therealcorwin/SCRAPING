@@ -106,6 +106,7 @@ for titre in titres:
     print(titre.h3.a.get("title"))
 
 # Methode 2 Docstrings
+print("\nRecupération des titres des livre de la page d'acceuil methode docstrings\n")
 
 articles = soup.find_all("article", class_="product_pod")
 

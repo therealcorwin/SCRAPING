@@ -132,3 +132,13 @@ for a in articles:
 # Recupere le contenu de la balise title.
 # Titre["title"] utilisable mais si la cle n'existe pas ==> Erreur.  Donc on utilse get() pour eviter une erreur.
         print(titre.get("title"))
+
+# Methode 3 Docstrings
+print("\nRecupération des titres des livre de la page d'acceuil methode 2 docstrings\n")
+
+# Cherche toutes les balises a contenant title
+# possibilité de cibler un titre précis avec soup.find_all("a", title="Mon Titre")
+titles_tag = soup.find_all("a", title=True)
+# Comprenhension de liste
+titles = [a["title"] for a in titles_tag]
+pprint(titles)

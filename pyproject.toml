@@ -9,6 +9,7 @@ readme = "README.md"
 python = "^3.12"
 requests = "^2.31.0"
 beautifulsoup4 = "^4.12.3"
+black = "^24.4.0"
 
 
 [build-system]

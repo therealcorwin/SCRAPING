@@ -28,7 +28,7 @@ for livre in one_star_book:
         raise KeyError from e
     try:
         livre_id = re.findall(r"_\d+", lien_livre)[0][1:]
-        # r"_\d+" == r"_\d{1,}
+        # r"_\d+" == r"_\d{1,} : une
         print(f"titre à enlever : {titre_livre} ==> ID: {livre_id}")
     except IndexError as e:
         print("Impossible de trouver l'ID du livre.")

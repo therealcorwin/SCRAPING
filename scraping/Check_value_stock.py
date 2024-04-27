@@ -1,13 +1,11 @@
 import requests
 import re
 from bs4 import BeautifulSoup
-from pprint import pprint
 from urllib.parse import urljoin
 from rich.console import Console
-from time import sleep
 
 url = "https://books.toscrape.com/"
-rich = Console()
+console = Console()
 Session_scrapping = requests.session()
 Response = Session_scrapping.get(url)
 
@@ -82,28 +80,19 @@ def recup_info_livre(titre_livre: str, url: str, categorie: str) -> dict:
     return stock
 
 
-console = Console()
-
-
 recuperation_url_categorie(Response)
 
-recup_livre = 0
-with console.status(
-    "[bold green]Récupération de la liste des livres en cours ..."
-) as status:
-    while recup_livre != 1:
-        for categorie, url_categorie in categorie_url.items():
-            parsing_categorie(categorie, url_categorie)
-            console.log(f"Parsing de la catégoire : {categorie} terminé")
-        recup_livre = 1
+
+with console.status("[bold green]Récupération des livres en cours ...") as status:
+    for categorie, url_categorie in categorie_url.items():
+        parsing_categorie(categorie, url_categorie)
+        console.log(f"Parsing de la catégoire : {categorie} terminé")
     console.log(f"Parsing terminé", style="bold blue")
 
-recup_info = 0
+
 with console.status("[bold green]Récupération du stock en cours...") as status:
-    while recup_info != 1:
-        for titre_livre, livre_url in url_livre.items():
-            recup_info_livre(titre_livre, livre_url["url"], livre_url["categorie"])
-        recup_info = 1
+    for titre_livre, livre_url in url_livre.items():
+        recup_info_livre(titre_livre, livre_url["url"], livre_url["categorie"])
     console.log(f"Récupération du stock terminé", style="bold blue")
 
     # pprint(stock)

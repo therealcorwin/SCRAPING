@@ -3,11 +3,17 @@ import re
 from bs4 import BeautifulSoup
 from pprint import pprint
 from urllib.parse import urljoin
+from rich.console import Console
+from time import sleep
 
 url = "https://books.toscrape.com/"
+rich = Console()
 Session_scrapping = requests.session()
 Response = Session_scrapping.get(url)
+
 categorie_url = {}
+url_livre = {}
+stock = {}
 
 
 def recuperation_url_categorie(session: requests) -> dict:
@@ -21,32 +27,83 @@ def recuperation_url_categorie(session: requests) -> dict:
     return categorie_url
 
 
-def recuperation_url_livre(url: str, categorie: str) -> list:
-    pass
-
-
-def parsing_categorie(url: str) -> str:
+def parsing_categorie(categorie: str, url: str) -> str:
+    recuperation_url_livre(categorie, url)
     Response2 = Session_scrapping.get(url)
     soup = BeautifulSoup(Response2.text, "html.parser")
-    next_link = soup.select("li.next")
-    if len(next_link) == 0:
-        print(f"Fin de la page pour {url}")
+    next_url_button = soup.select("li.next")
+    if len(next_url_button) == 0:
+        # print(f"Fin de la page pour {url}")
         return ""
-
-    for i in next_link:
-        plop = i.a["href"]
+    for i in next_url_button:
+        next_link = i.a["href"]
         # p = re.findall(r"page-\d{1,2}.html", plop)
-        next_url = urljoin(url, plop)
-        print(next_url)
-        # next_link = ""
-        parsing_categorie(next_url)
-
-    # print(next_url)
+        next_url = urljoin(url, next_link)
+        parsing_categorie(categorie, next_url)
 
 
-# recuperation_url_categorie(Response)
-# for i, cle in enumerate(categorie_url.items(), start=2):
-#    print(i, cle[0], cle[1])
+def recuperation_url_livre(categorie: str, url: str) -> dict:
+    global url_livre
+    soup_url_livre = Session_scrapping.get(url)
+    recup2 = BeautifulSoup(soup_url_livre.text, "html.parser")
+    recup_url_livre = recup2.select("article.product_pod")
+    for i in recup_url_livre:
+        url_livre[i.h3.a["title"]] = {
+            "categorie": categorie,
+            "url": re.sub(
+                r"\.\./\.\./\.\./", "https://books.toscrape.com/catalogue/", i.a["href"]
+            ),
+        }
+    return url_livre
 
 
-parsing_categorie(url)
+def recup_info_livre(titre_livre: str, url: str, categorie: str) -> dict:
+    session = Session_scrapping.get(url)
+    soup_info_livre = BeautifulSoup(session.text, "html.parser")
+    recup_stock = soup_info_livre.find("p", class_="instock availability")
+    stock_livre = re.findall(r"\d{1,2}", recup_stock.get_text(strip=True))
+    recup_livre = soup_info_livre.select_one("p.price_color")
+    prix_livre = re.search(r"\d{1,2}\.\d{1,2}", recup_livre.get_text())
+    prix_stock = int(stock_livre[0]) * float(prix_livre[0])
+    if stock.get(categorie) is None:
+        stock[categorie] = []
+        stock[categorie].append({"Valeur_stock_total": 0, "Nombre_titre": 0})
+
+    stock[categorie].append(
+        {
+            "titre": titre_livre,
+            "Prix Unitaire": prix_livre[0],
+            "quantité": stock_livre[0],
+            "Valeur Stock": prix_stock,
+        }
+    )
+    stock[categorie][0]["Valeur_stock_total"] += prix_stock
+    stock[categorie][0]["Nombre_titre"] += 1
+    return stock
+
+
+console = Console()
+
+
+recuperation_url_categorie(Response)
+
+recup_livre = 0
+with console.status(
+    "[bold green]Récupération de la liste des livres en cours ..."
+) as status:
+    while recup_livre != 1:
+        for categorie, url_categorie in categorie_url.items():
+            parsing_categorie(categorie, url_categorie)
+            console.log(f"Parsing de la catégoire : {categorie} terminé")
+        recup_livre = 1
+    console.log(f"Parsing terminé", style="bold blue")
+
+recup_info = 0
+with console.status("[bold green]Récupération du stock en cours...") as status:
+    while recup_info != 1:
+        for titre_livre, livre_url in url_livre.items():
+            recup_info_livre(titre_livre, livre_url["url"], livre_url["categorie"])
+        recup_info = 1
+    console.log(f"Récupération du stock terminé", style="bold blue")
+
+    # pprint(stock)

@@ -11,6 +11,8 @@ requests = "^2.31.0"
 beautifulsoup4 = "^4.12.3"
 black = "^24.4.0"
 rich = "^13.7.1"
+loguru = "^0.7.2"
+selectolax = "^0.3.21"
 
 
 [build-system]

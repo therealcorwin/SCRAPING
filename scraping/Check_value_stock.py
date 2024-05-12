@@ -3,6 +3,8 @@ import re
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from rich.console import Console
+from rich.table import Table
+from pprint import pprint
 
 url = "https://books.toscrape.com/"
 console = Console()
@@ -31,11 +33,9 @@ def parsing_categorie(categorie: str, url: str) -> str:
     soup = BeautifulSoup(Response2.text, "html.parser")
     next_url_button = soup.select("li.next")
     if len(next_url_button) == 0:
-        # print(f"Fin de la page pour {url}")
         return ""
     for i in next_url_button:
         next_link = i.a["href"]
-        # p = re.findall(r"page-\d{1,2}.html", plop)
         next_url = urljoin(url, next_link)
         parsing_categorie(categorie, next_url)
 
@@ -66,7 +66,6 @@ def recup_info_livre(titre_livre: str, url: str, categorie: str) -> dict:
     if stock.get(categorie) is None:
         stock[categorie] = []
         stock[categorie].append({"Valeur_stock_total": 0, "Nombre_titre": 0})
-
     stock[categorie].append(
         {
             "titre": titre_livre,
@@ -80,8 +79,59 @@ def recup_info_livre(titre_livre: str, url: str, categorie: str) -> dict:
     return stock
 
 
-recuperation_url_categorie(Response)
+def affiche_etat_stock(stock: dict):
+    table = Table(title="Stock Information")
+    table.add_column("Category", style="cyan", justify="center")
+    table.add_column("Number of Titles", style="magenta", justify="center")
+    table.add_column("Total Stock Value", style="yellow", justify="right")
+    valeur_stock = 0
+    for categorie in stock.keys():
+        table.add_row(
+            categorie,
+            str(stock[categorie][0]["Nombre_titre"]),
+            str(stock[categorie][0]["Valeur_stock_total"]),
+        )
+        valeur_stock += stock[categorie][0]["Valeur_stock_total"]
+    table.add_row("Valeur Totale", "", str(valeur_stock))
+    console.print(table)
 
+
+def affiche_etat_stock_detail(stock: dict):
+    table = Table(title="Stock Information")
+    table.add_column("Category", style="cyan", justify="center")
+    table.add_column("Titre", style="magenta", justify="center")
+    table.add_column("Stock Dispo", style="magenta", justify="center")
+    table.add_column("Prix Unit.", style="magenta", justify="center")
+    table.add_column("Valeur Stock", style="yellow", justify="right")
+    valeur_stock_global = 0
+    for categorie, stock_item in stock.items():
+        valeur_stock_categorie = 0
+        for livre in stock[categorie][1:]:
+            table.add_row(
+                categorie,
+                livre["titre"],
+                str(livre["quantité"]),
+                str(livre["Prix Unitaire"]),
+                str(livre["Valeur Stock"]),
+            )
+            valeur_stock_categorie += livre["Valeur Stock"]
+        valeur_stock_global += valeur_stock_categorie
+        table.add_row("Valeur Stock", "", "", "", str(valeur_stock_categorie))
+        table.add_row("******", "******", "******", "******", "******")
+    table.add_row("Valeur Stock Global", "", "", "", str(valeur_stock_global))
+
+    console.print(table)
+
+
+# parsing_categorie(
+#    "Fantasy",
+#    "https://books.toscrape.com/catalogue/category/books/fantasy_19/index.html",
+# )
+# for url, livre in url_livre.items():
+#    print(url)
+
+
+recuperation_url_categorie(Response)
 
 with console.status("[bold green]Récupération des livres en cours ...") as status:
     for categorie, url_categorie in categorie_url.items():
@@ -89,10 +139,10 @@ with console.status("[bold green]Récupération des livres en cours ...") as sta
         console.log(f"Parsing de la catégoire : {categorie} terminé")
     console.log(f"Parsing terminé", style="bold blue")
 
-
 with console.status("[bold green]Récupération du stock en cours...") as status:
     for titre_livre, livre_url in url_livre.items():
         recup_info_livre(titre_livre, livre_url["url"], livre_url["categorie"])
     console.log(f"Récupération du stock terminé", style="bold blue")
 
-    # pprint(stock)
+# affiche_etat_stock(stock)
+affiche_etat_stock_detail(stock)

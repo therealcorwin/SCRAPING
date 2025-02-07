@@ -69,18 +69,16 @@ def recuperation_url_livre(categorie: str, url: str, tree: HTMLParser) -> dict:
                     i.attributes["href"],
                 ),
             }
-    print(url_livre)
-    exit()
     return url_livre
 
 
 def recup_info_livre(titre_livre: str, url: str, categorie: str) -> dict:
     session = Session_scrapping.get(url)
     tree_info_livre = HTMLParser(session.text)
-    recup_stock = tree_info_livre.css("p.instock_availability")
-    stock_livre = re.findall(r"\d{1,2}", recup_stock.get_text(strip=True))
-    recup_livre = tree_info_livre.css("p.price_color")
-    prix_livre = re.search(r"\d{1,2}\.\d{1,2}", recup_livre.get_text())
+    recup_stock = tree_info_livre.css_first("p.instock.availability")
+    stock_livre = re.findall(r"\d{1,2}", recup_stock.text(strip=True))
+    recup_livre = tree_info_livre.css_first("p.price_color")
+    prix_livre = re.search(r"\d{1,2}\.\d{1,2}", recup_livre.text())
     prix_stock = int(stock_livre[0]) * float(prix_livre[0])
     if stock.get(categorie) is None:
         stock[categorie] = []
@@ -152,7 +150,6 @@ with console.status("[bold green]Récupération des livres en cours ...") as sta
 
 with console.status("[bold green]Récupération du stock en cours...") as status:
     for titre_livre, livre_url in url_livre.items():
-        print(livre_url["url"])
         recup_info_livre(titre_livre, livre_url["url"], livre_url["categorie"])
     console.log(f"Récupération du stock terminé", style="bold blue")
 

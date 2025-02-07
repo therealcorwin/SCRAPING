@@ -1,0 +1,3 @@
+import scraping.Check_value_stock
+import scraping.Check_category_qty
+import scraping.Check_star

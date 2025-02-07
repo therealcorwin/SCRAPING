@@ -1,80 +1,85 @@
 import requests
 import re
-from bs4 import BeautifulSoup
+from selectolax.parser import HTMLParser
 from urllib.parse import urljoin
 from rich.console import Console
 from rich.table import Table
 from pprint import pprint
 
 url = "https://books.toscrape.com/"
-console = Console()
 Session_scrapping = requests.session()
-Response = Session_scrapping.get(url)
+reponse = Session_scrapping.get(url)
+tree = HTMLParser(reponse.text)
 
-categorie_url = {}
+console = Console()
+
+categorie_urls = {}
 url_livre = {}
 stock = {}
 
 
-def recuperation_url_categorie(session: requests) -> dict:
-    soup = BeautifulSoup(session.text, "html.parser")
-    aside = soup.find("div", class_="side_categories")
-    categories = aside.find("ul").find("li").find("ul").find_all("a", href=True)
-    for cat in categories:
-        link_category = cat.get("href")
-        categorie = cat.text.strip()
-        categorie_url[categorie] = url + link_category
-    return categorie_url
+def recuperation_url_categorie(tree: HTMLParser) -> dict:
+    global categorie_urls
+    categorie = tree.css("ul.nav.nav-list")
+    categorie_urls = {
+        categorie.text().strip(): url + categorie.attributes["href"]
+        for t in tree.css("ul.nav.nav-list")
+        for categorie in t.css("li > ul > li > a")
+    }
+    return categorie_urls
 
 
-def parsing_categorie(categorie: str, url: str) -> str:
-    recuperation_url_livre(categorie, url)
-    Response2 = Session_scrapping.get(url)
-    soup = BeautifulSoup(Response2.text, "html.parser")
-    next_url_button = soup.select("li.next")
+def parsing_categorie(categorie: str, url: str, tree: HTMLParser) -> str:
+    recuperation_url_livre(categorie, url, tree)
+    response = requests.get(url)
+    tree_next_url = HTMLParser(response.text)
+    next_url_button = tree_next_url.css("li.next > a")
     if len(next_url_button) == 0:
         return ""
     for i in next_url_button:
-        next_link = i.a["href"]
+        next_link = i.attributes["href"]
         next_url = urljoin(url, next_link)
-        parsing_categorie(categorie, next_url)
+        parsing_categorie(categorie, next_url, tree_next_url)
 
 
-def recuperation_url_livre(categorie: str, url: str) -> dict:
+def recuperation_url_livre(categorie: str, url: str, tree: HTMLParser) -> dict:
     global url_livre
-    soup_url_livre = Session_scrapping.get(url)
-    recup2 = BeautifulSoup(soup_url_livre.text, "html.parser")
-    recup_url_livre = recup2.select("article.product_pod")
+    Response3 = Session_scrapping.get(url)
+    tree_recup_url_livre = HTMLParser(Response3.text)
+    recup_url_livre = tree_recup_url_livre.css("article.product_pod > h3 > a")
     for i in recup_url_livre:
-        if i.h3.a["title"] not in url_livre:
-            url_livre[i.h3.a["title"]] = {
+        if i.attributes["title"] not in url_livre:
+            url_livre[i.attributes["title"]] = {
                 "categorie": categorie,
                 "url": re.sub(
                     r"\.\./\.\./\.\./",
                     "https://books.toscrape.com/catalogue/",
-                    i.a["href"],
+                    i.attributes["href"],
                 ),
             }
         else:
-            id_duplicate_title = re.search(r"_\d+", i.h3.a["href"])
-            print(id_duplicate_title.group(), i.h3.a["title"])
-            url_livre[i.h3.a["title"] + " DUPLICATE " + id_duplicate_title.group()] = {
+            id_duplicate_title = re.search(r"_\d+", i.attributes["href"])
+            url_livre[
+                i.attributes["title"] + " DUPLICATE " + id_duplicate_title.group()
+            ] = {
                 "categorie": categorie,
                 "url": re.sub(
                     r"\.\./\.\./\.\./",
                     "https://books.toscrape.com/catalogue/",
-                    i.a["href"],
+                    i.attributes["href"],
                 ),
             }
+    print(url_livre)
+    exit()
     return url_livre
 
 
 def recup_info_livre(titre_livre: str, url: str, categorie: str) -> dict:
     session = Session_scrapping.get(url)
-    soup_info_livre = BeautifulSoup(session.text, "html.parser")
-    recup_stock = soup_info_livre.find("p", class_="instock availability")
+    tree_info_livre = HTMLParser(session.text)
+    recup_stock = tree_info_livre.css("p.instock_availability")
     stock_livre = re.findall(r"\d{1,2}", recup_stock.get_text(strip=True))
-    recup_livre = soup_info_livre.select_one("p.price_color")
+    recup_livre = tree_info_livre.css("p.price_color")
     prix_livre = re.search(r"\d{1,2}\.\d{1,2}", recup_livre.get_text())
     prix_stock = int(stock_livre[0]) * float(prix_livre[0])
     if stock.get(categorie) is None:
@@ -137,15 +142,19 @@ def affiche_etat_stock_detail(stock: dict):
     console.print(table)
 
 
-recuperation_url_categorie(Response)
+recuperation_url_categorie(tree)
+
 with console.status("[bold green]Récupération des livres en cours ...") as status:
-    for categorie, url_categorie in categorie_url.items():
-        parsing_categorie(categorie, url_categorie)
+    for categorie, url_categorie in categorie_urls.items():
+        parsing_categorie(categorie, url_categorie, tree)
         console.log(f"Parsing de la catégoire : {categorie} terminé")
     console.log(f"Parsing terminé", style="bold blue")
+
 with console.status("[bold green]Récupération du stock en cours...") as status:
     for titre_livre, livre_url in url_livre.items():
+        print(livre_url["url"])
         recup_info_livre(titre_livre, livre_url["url"], livre_url["categorie"])
     console.log(f"Récupération du stock terminé", style="bold blue")
+
 affiche_etat_stock(stock)
 affiche_etat_stock_detail(stock)
